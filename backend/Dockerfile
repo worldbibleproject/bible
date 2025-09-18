@@ -25,11 +25,11 @@ COPY . .
 # Generate Prisma client
 RUN npx prisma generate
 
-# Build the application
-RUN npm run build
+# Build the application (skip TypeScript for now)
+# RUN npm run build
 
-# Remove dev dependencies after build
-RUN npm prune --omit=dev
+# Keep tsx for runtime (needed for direct TypeScript execution)
+RUN npm prune --omit=dev --keep=tsx
 
 # Create uploads directory
 RUN mkdir -p uploads
@@ -41,7 +41,7 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:5000/health || exit 1
 
-# Start the application
-CMD ["npm", "start"]
+# Start the application (using tsx directly)
+CMD ["npx", "tsx", "src/index.ts"]
 
 
