@@ -88,6 +88,7 @@ model User {
   seekerRelationships MentorRelationship[] @relation("SeekerRelationships")
   sessions          Session[]
   sessionParticipants SessionParticipant[]
+  mentorSessions    Session[] @relation("MentorSessions")
   groupSessions     GroupSession[]
   groupParticipants GroupParticipant[]
   churchConnections ChurchConnection[] @relation("SeekerConnections")
@@ -98,8 +99,8 @@ model User {
   invitations       UserInvitation[]
   videoMeetings     VideoMeeting[]
   availability      Availability[]
-  mentorProfile     Mentor?
-  seekerProfile     Seeker?
+  mentor            Mentor?
+  seeker            Seeker?
 
   @@map("users")
 }
@@ -182,6 +183,7 @@ model MentorRelationship {
 model Session {
   id                  Int           @id @default(autoincrement())
   mentorId            Int
+  seekerId            Int?
   sessionType         SessionType
   topic               String?
   title               String?
@@ -192,10 +194,13 @@ model Session {
   currentParticipants Int           @default(0)
   status              SessionStatus @default(SCHEDULED)
   meetingLink         String?
+  meetingId           String?       // Zoom meeting ID
   notes               String?       @db.Text
   createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
 
-  mentor User @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  mentor User @relation("MentorSessions", fields: [mentorId], references: [id], onDelete: Cascade)
+  seeker User? @relation(fields: [seekerId], references: [id], onDelete: Cascade)
   participants SessionParticipant[]
   messages Message[]
 
@@ -489,20 +494,3 @@ model Seeker {
   @@map("seekers")
 }
 
-model Session {
-  id            Int      @id @default(autoincrement())
-  mentorId      Int
-  seekerId      Int
-  scheduledTime DateTime
-  duration      Int      // in minutes
-  status        String   @default("pending") // pending, confirmed, completed, cancelled
-  meetingId     String?  // Zoom meeting ID
-  notes         String?  @db.Text
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  mentor Mentor @relation(fields: [mentorId], references: [id], onDelete: Cascade)
-  seeker Seeker @relation(fields: [seekerId], references: [id], onDelete: Cascade)
-
-  @@map("sessions")
-}
