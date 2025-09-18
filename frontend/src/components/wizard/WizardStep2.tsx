@@ -3,15 +3,23 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { WizardData } from '@/types';
 import { 
   SparklesIcon,
   ArrowLeftIcon,
   CheckCircleIcon
 } from '@heroicons/react/24/outline';
 
+interface WizardFormData {
+  feeling: string;
+  barrier: string;
+  heart: string;
+  spiritual_background: string;
+  life_stage: string;
+  preferred_style: string;
+}
+
 interface WizardStep2Props {
-  data: WizardData | null;
+  data: WizardFormData | null;
   isProcessing: boolean;
   onSubmit: () => void;
   onBack: () => void;
