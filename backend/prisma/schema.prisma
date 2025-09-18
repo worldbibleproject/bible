@@ -92,13 +92,12 @@ model User {
   groupSessions     GroupSession[]
   groupParticipants GroupParticipant[]
   churchConnections ChurchConnection[] @relation("SeekerConnections")
+  churchFinderConnections ChurchConnection[] @relation("ChurchFinderConnections")
   vettedChurches    Church[] @relation("VettedBy")
   aiResponses       SeekerAiResponse[]
   wizardData        MiniBibleWizardData[]
   journeyTracking   JourneyTracking[]
-  invitations       UserInvitation[]
   videoMeetings     VideoMeeting[]
-  availability      Availability[]
   mentor            Mentor?
   seeker            Seeker?
 
@@ -298,7 +297,7 @@ model Church {
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
 
-  vettedByUser User @relation("VettedBy", fields: [vettedBy], references: [id], onDelete: SetNull)
+  vettedByUser User? @relation("VettedBy", fields: [vettedBy], references: [id], onDelete: SetNull)
   connections  ChurchConnection[]
 
   @@map("churches")
@@ -317,7 +316,7 @@ model ChurchConnection {
 
   seeker       User   @relation("SeekerConnections", fields: [seekerId], references: [id], onDelete: Cascade)
   church       Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
-  churchFinder User   @relation(fields: [churchFinderId], references: [id], onDelete: Cascade)
+  churchFinder User   @relation("ChurchFinderConnections", fields: [churchFinderId], references: [id], onDelete: Cascade)
 
   @@map("church_connections")
 }
@@ -473,7 +472,6 @@ model Mentor {
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   availability Availability[]
-  sessions     Session[]
 
   @@map("mentors")
 }
@@ -489,7 +487,6 @@ model Seeker {
   updatedAt       DateTime @updatedAt
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sessions Session[]
 
   @@map("seekers")
 }
