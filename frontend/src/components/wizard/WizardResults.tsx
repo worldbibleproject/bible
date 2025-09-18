@@ -11,7 +11,7 @@ import {
   PrinterIcon,
   UserPlusIcon,
   ArrowRightIcon,
-  RefreshIcon
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import { BibleReference, BibleVerse } from '@/types';
 
@@ -245,7 +245,7 @@ export function WizardResults({
               onClick={onStartOver}
               variant="outline"
             >
-              <RefreshIcon className="w-4 h-4 mr-2" />
+              <ArrowPathIcon className="w-4 h-4 mr-2" />
               Start Over
             </Button>
             

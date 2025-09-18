@@ -32,7 +32,7 @@ interface WizardResults {
   verses: any[];
 }
 
-export function WizardPage() {
+export default function WizardPage() {
   const { isAuthenticated, user } = useAuth();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
