@@ -2,7 +2,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { ZoomService } from '../lib/zoom';
 import { SchedulingService } from '../lib/scheduling';
-import { authenticateToken } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -17,7 +17,7 @@ const schedulingService = new SchedulingService(prisma, zoomService);
 /**
  * Create a new video meeting
  */
-router.post('/create-meeting', authenticateToken, async (req, res) => {
+router.post('/create-meeting', authenticate, async (req, res) => {
   try {
     const { topic, startTime, duration = 60 } = req.body;
     const userId = (req as any).user.id;
@@ -68,7 +68,7 @@ router.post('/create-meeting', authenticateToken, async (req, res) => {
 /**
  * Get user's meetings
  */
-router.get('/meetings', authenticateToken, async (req, res) => {
+router.get('/meetings', authenticate, async (req, res) => {
   try {
     const userId = (req as any).user.id;
     const { status, limit = 10, offset = 0 } = req.query;
@@ -111,7 +111,7 @@ router.get('/meetings', authenticateToken, async (req, res) => {
 /**
  * Join a meeting
  */
-router.post('/join-meeting', authenticateToken, async (req, res) => {
+router.post('/join-meeting', authenticate, async (req, res) => {
   try {
     const { meetingId } = req.body;
     const userId = (req as any).user.id;
@@ -169,7 +169,7 @@ router.post('/join-meeting', authenticateToken, async (req, res) => {
 /**
  * End a meeting
  */
-router.post('/end-meeting/:meetingId', authenticateToken, async (req, res) => {
+router.post('/end-meeting/:meetingId', authenticate, async (req, res) => {
   try {
     const { meetingId } = req.params;
     const userId = (req as any).user.id;
@@ -209,7 +209,7 @@ router.post('/end-meeting/:meetingId', authenticateToken, async (req, res) => {
 /**
  * Delete a meeting
  */
-router.delete('/meetings/:id', authenticateToken, async (req, res) => {
+router.delete('/meetings/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = (req as any).user.id;
@@ -256,7 +256,7 @@ router.delete('/meetings/:id', authenticateToken, async (req, res) => {
 /**
  * Get meeting participants
  */
-router.get('/meetings/:id/participants', authenticateToken, async (req, res) => {
+router.get('/meetings/:id/participants', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = (req as any).user.id;
@@ -308,7 +308,7 @@ router.get('/meetings/:id/participants', authenticateToken, async (req, res) => 
 /**
  * Get meeting analytics
  */
-router.get('/meetings/:id/analytics', authenticateToken, async (req, res) => {
+router.get('/meetings/:id/analytics', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = (req as any).user.id;
