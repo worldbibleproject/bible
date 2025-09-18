@@ -1,0 +1,508 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SEEKER
+  DISCIPLE_MAKER
+  CHURCH_FINDER
+  ADMIN
+}
+
+enum SessionType {
+  ONE_ON_ONE
+  GROUP
+}
+
+enum MessageType {
+  TEXT
+  VIDEO_CALL
+  FILE
+}
+
+enum SessionStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ParticipantStatus {
+  INVITED
+  ACCEPTED
+  DECLINED
+  ATTENDED
+  NO_SHOW
+}
+
+enum ConnectionStatus {
+  PENDING
+  CONTACTED
+  VISITED
+  JOINED
+  DECLINED
+}
+
+enum NotificationType {
+  SESSION_BOOKING
+  MENTOR_MATCH
+  CHURCH_CONNECTION
+  MESSAGE
+  SYSTEM
+}
+
+model User {
+  id                Int      @id @default(autoincrement())
+  username          String   @unique
+  email             String   @unique
+  passwordHash      String
+  userRole          UserRole @default(SEEKER)
+  profileComplete   Boolean  @default(false)
+  location          String?
+  ageRange          String?
+  gender            String?
+  struggles         Json?
+  preferredFormat   String?  @default("1on1")
+  preferredCommunication String? @default("chat")
+  isApproved        Boolean  @default(false)
+  approvalDate      DateTime?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  seekerProfile     SeekerProfile?
+  mentorProfile     MentorProfile?
+  sentMessages      Message[] @relation("MessageSender")
+  receivedMessages  Message[] @relation("MessageRecipient")
+  notifications     Notification[]
+  mentorRelationships MentorRelationship[] @relation("MentorRelationships")
+  seekerRelationships MentorRelationship[] @relation("SeekerRelationships")
+  sessions          Session[]
+  sessionParticipants SessionParticipant[]
+  groupSessions     GroupSession[]
+  groupParticipants GroupParticipant[]
+  churchConnections ChurchConnection[] @relation("SeekerConnections")
+  vettedChurches    Church[] @relation("VettedBy")
+  aiResponses       SeekerAiResponse[]
+  wizardData        MiniBibleWizardData[]
+  journeyTracking   JourneyTracking[]
+  invitations       UserInvitation[]
+  videoMeetings     VideoMeeting[]
+  availability      Availability[]
+  mentorProfile     Mentor?
+  seekerProfile     Seeker?
+
+  @@map("users")
+}
+
+model SeekerProfile {
+  id                      Int      @id @default(autoincrement())
+  userId                  Int      @unique
+  maritalStatus           String?
+  struggles               Json?
+  currentSituation        String?  @db.Text
+  helpNeeded              String?  @db.Text
+  faithLevel              String?
+  churchBackground        String?
+  spiritualJourney        String?  @db.Text
+  faithQuestions          String?  @db.Text
+  preferredFormat         String?  @default("1on1")
+  preferredCommunication  String?  @default("both")
+  mentorGenderPreference  String?  @default("no_preference")
+  mentorAgePreference     String?  @default("no_preference")
+  sessionFrequency        String?  @default("weekly")
+  groupInterests          Json?
+  mentoringGoals          String?  @db.Text
+  mentorExpectations      String?  @db.Text
+  commitmentLevel         String?
+  aiResponse              Json?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("seeker_profiles")
+}
+
+model MentorProfile {
+  id                      Int      @id @default(autoincrement())
+  userId                  Int      @unique
+  testimony               String?  @db.Text
+  yearsChristian          String?
+  denomination            String?
+  traumas                 Json?
+  healingStory            String?  @db.Text
+  keyScriptures           String?  @db.Text
+  specialties             Json?
+  additionalExpertise     String?  @db.Text
+  maxMentees              Int      @default(5)
+  currentMentees          Int      @default(0)
+  sessionTypes            String?  @default("both")
+  communicationPreference String?  @default("both")
+  sessionDuration         Int      @default(60)
+  mentoringPhilosophy     String?  @db.Text
+  groupTopics             Json?
+  groupDescription        String?  @db.Text
+  availabilitySchedule    Json?
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("mentor_profiles")
+}
+
+model MentorRelationship {
+  id          Int      @id @default(autoincrement())
+  mentorId    Int
+  seekerId    Int
+  status      String   @default("pending")
+  matchScore  Decimal? @db.Decimal(3, 2)
+  startedAt   DateTime?
+  endedAt     DateTime?
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  mentor User @relation("MentorRelationships", fields: [mentorId], references: [id], onDelete: Cascade)
+  seeker User @relation("SeekerRelationships", fields: [seekerId], references: [id], onDelete: Cascade)
+
+  @@map("mentor_relationships")
+}
+
+model Session {
+  id                  Int           @id @default(autoincrement())
+  mentorId            Int
+  sessionType         SessionType
+  topic               String?
+  title               String?
+  description         String?       @db.Text
+  scheduledTime       DateTime?
+  durationMinutes     Int           @default(60)
+  maxParticipants     Int           @default(1)
+  currentParticipants Int           @default(0)
+  status              SessionStatus @default(SCHEDULED)
+  meetingLink         String?
+  notes               String?       @db.Text
+  createdAt           DateTime      @default(now())
+
+  mentor User @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  participants SessionParticipant[]
+  messages Message[]
+
+  @@map("sessions")
+}
+
+model SessionParticipant {
+  id        Int              @id @default(autoincrement())
+  sessionId Int
+  seekerId  Int
+  status    ParticipantStatus @default(INVITED)
+  joinedAt  DateTime?
+  leftAt    DateTime?
+  feedback  String?          @db.Text
+  createdAt DateTime         @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  seeker  User    @relation(fields: [seekerId], references: [id], onDelete: Cascade)
+
+  @@map("session_participants")
+}
+
+model GroupSession {
+  id              Int           @id @default(autoincrement())
+  mentorId        Int
+  topic           String
+  description     String        @db.Text
+  frequency       String        // weekly, bi-weekly, monthly
+  maxParticipants Int           @default(10)
+  duration        Int           @default(90)
+  scheduleDay     String        // monday, tuesday, etc.
+  scheduleTime    String        // 19:00, 20:00, etc.
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  mentor User @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  participants GroupParticipant[]
+
+  @@map("group_sessions")
+}
+
+model GroupParticipant {
+  id              Int           @id @default(autoincrement())
+  groupSessionId  Int
+  userId          Int
+  status          ParticipantStatus @default(INVITED)
+  joinedAt        DateTime      @default(now())
+
+  groupSession GroupSession @relation(fields: [groupSessionId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupSessionId, userId])
+  @@map("group_participants")
+}
+
+model Message {
+  id          Int         @id @default(autoincrement())
+  senderId    Int
+  recipientId Int
+  sessionId   Int?
+  messageType MessageType @default(TEXT)
+  content     String?     @db.Text
+  filePath    String?
+  isRead      Boolean     @default(false)
+  readAt      DateTime?
+  createdAt   DateTime    @default(now())
+
+  sender    User    @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient User    @relation("MessageRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  session   Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@map("messages")
+}
+
+model Church {
+  id            Int      @id @default(autoincrement())
+  name          String
+  denomination  String?
+  address       String?  @db.Text
+  city          String?
+  state         String?
+  zipCode       String?
+  phone         String?
+  email         String?
+  website       String?
+  pastorName    String?
+  serviceTimes  Json?
+  description   String?  @db.Text
+  specialties   Json?
+  sizeCategory  String?  @default("medium")
+  isVetted      Boolean  @default(false)
+  vettedBy      Int?
+  vettedDate    DateTime?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  vettedByUser User @relation("VettedBy", fields: [vettedBy], references: [id], onDelete: SetNull)
+  connections  ChurchConnection[]
+
+  @@map("churches")
+}
+
+model ChurchConnection {
+  id              Int             @id @default(autoincrement())
+  seekerId        Int
+  churchId        Int
+  churchFinderId  Int
+  status          ConnectionStatus @default(PENDING)
+  connectionNotes String?         @db.Text
+  contactInfoShared Boolean       @default(false)
+  sharedAt        DateTime?
+  createdAt       DateTime        @default(now())
+
+  seeker       User   @relation("SeekerConnections", fields: [seekerId], references: [id], onDelete: Cascade)
+  church       Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  churchFinder User   @relation(fields: [churchFinderId], references: [id], onDelete: Cascade)
+
+  @@map("church_connections")
+}
+
+model Notification {
+  id        Int             @id @default(autoincrement())
+  userId    Int
+  type      NotificationType
+  title     String
+  message   String          @db.Text
+  actionUrl String?
+  isRead    Boolean         @default(false)
+  readAt    DateTime?
+  createdAt DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model MatchingScore {
+  id                        Int     @id @default(autoincrement())
+  seekerId                  Int
+  mentorId                  Int
+  ageCompatibility          Decimal @db.Decimal(3, 2) @default(0.0)
+  struggleCompatibility     Decimal @db.Decimal(3, 2) @default(0.0)
+  communicationCompatibility Decimal @db.Decimal(3, 2) @default(0.0)
+  formatCompatibility       Decimal @db.Decimal(3, 2) @default(0.0)
+  overallScore              Decimal @db.Decimal(3, 2) @default(0.0)
+  calculatedAt              DateTime @default(now())
+
+  @@unique([seekerId, mentorId])
+  @@map("matching_scores")
+}
+
+model JourneyTracking {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  stepName    String
+  stepData    Json?
+  completedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("journey_tracking")
+}
+
+model UserInvitation {
+  id        Int      @id @default(autoincrement())
+  email     String
+  name      String
+  role      String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("user_invitations")
+}
+
+model MiniBibleWizardData {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  userInput     Json?
+  referencesJson String? @db.Text
+  prayerText    String?  @db.Text
+  versesJson    String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("mini_bible_wizard_data")
+}
+
+model SeekerAiResponse {
+  id                      Int      @id @default(autoincrement())
+  userId                  Int
+  feeling                 String?
+  barrier                 String?
+  heartText               String?  @db.Text
+  spiritualBackground     String?
+  lifeStage               String?
+  preferredStyle          String?
+  learningStyle           String?
+  aiScriptureResponse     Json?
+  aiEncouragement         String?  @db.Text
+  aiPrayer                String?  @db.Text
+  aiVerses                Json?
+  createdAt               DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("seeker_ai_responses")
+}
+
+model BibleVerse {
+  id        Int      @id @default(autoincrement())
+  book      Int
+  chapter   Int
+  verse     Int
+  text      String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([book, chapter])
+  @@index([book, chapter, verse])
+  @@map("bible_verses_web")
+}
+
+model VideoMeeting {
+  id          Int      @id @default(autoincrement())
+  meetingId   String   @unique
+  topic       String
+  startTime   DateTime
+  duration    Int      // in minutes
+  joinUrl     String
+  password    String?
+  createdBy   Int
+  status      String   @default("scheduled") // scheduled, in_progress, ended, cancelled
+  endedAt     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdByUser User @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@map("video_meetings")
+}
+
+model Availability {
+  id          Int      @id @default(autoincrement())
+  mentorId    Int
+  dayOfWeek   Int      // 0 = Sunday, 1 = Monday, etc.
+  startTime   String   // HH:MM format
+  endTime     String   // HH:MM format
+  isAvailable Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  mentor Mentor @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+
+  @@map("availability")
+}
+
+model Mentor {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @unique
+  bio           String?  @db.Text
+  specialties   Json?    // Array of specialties
+  isAvailable   Boolean  @default(true)
+  rating        Decimal? @db.Decimal(3, 2)
+  totalSessions Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  availability Availability[]
+  sessions     Session[]
+
+  @@map("mentors")
+}
+
+model Seeker {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique
+  bio             String?  @db.Text
+  spiritualJourney String? @db.Text
+  interests       Json?    // Array of interests
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions Session[]
+
+  @@map("seekers")
+}
+
+model Session {
+  id            Int      @id @default(autoincrement())
+  mentorId      Int
+  seekerId      Int
+  scheduledTime DateTime
+  duration      Int      // in minutes
+  status        String   @default("pending") // pending, confirmed, completed, cancelled
+  meetingId     String?  // Zoom meeting ID
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  mentor Mentor @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  seeker Seeker @relation(fields: [seekerId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}

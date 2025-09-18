@@ -1,208 +1,243 @@
 @echo off
-echo 🌊 Digital Ocean Deployment Script
-echo ==================================
+echo ========================================
+echo Evangelism App - Digital Ocean Deployment
+echo ========================================
 echo.
 
-echo 📋 This script will help you deploy your evangelism platform to Digital Ocean.
+echo This script will help you deploy to Digital Ocean
+echo Make sure you have:
+echo 1. A Digital Ocean droplet created
+echo 2. SSH access to your droplet
+echo 3. Your droplet IP address
 echo.
 
-REM Check if git is available
-where git >nul 2>nul
-if %errorlevel% neq 0 (
-    echo ❌ Git is not installed. Please install Git first.
-    pause
-    exit /b 1
-)
-
-echo ✅ Git is available
-echo.
-
-echo 🔑 REQUIRED INFORMATION
-echo ======================
-echo.
-echo You'll need the following information:
-echo   - Digital Ocean API Token
-echo   - Domain name (optional)
-echo   - SSH key for server access
-echo.
-
-set /p DO_TOKEN="Enter your Digital Ocean API Token: "
-set /p DOMAIN_NAME="Enter your domain name (or press Enter to skip): "
-set /p SSH_KEY_NAME="Enter your SSH key name in Digital Ocean: "
+set /p DROPLET_IP="Enter your Digital Ocean droplet IP address: "
+set /p SSH_USER="Enter SSH username (usually 'root' or 'ubuntu'): "
 
 echo.
-echo 🚀 DEPLOYMENT OPTIONS
-echo ====================
-echo.
-echo 1. Create new droplet and deploy
-echo 2. Deploy to existing droplet
-echo 3. Generate deployment commands only
+echo ========================================
+echo Step 1: Prepare Local Files
+echo ========================================
 echo.
 
-set /p DEPLOY_OPTION="Choose option (1-3): "
-
-if "%DEPLOY_OPTION%"=="1" goto create_droplet
-if "%DEPLOY_OPTION%"=="2" goto existing_droplet
-if "%DEPLOY_OPTION%"=="3" goto generate_commands
-goto invalid_option
-
-:create_droplet
-echo.
-echo 🆕 Creating new Digital Ocean droplet...
+echo Creating production configuration...
 echo.
 
-echo 📝 Droplet configuration:
-echo   - Name: evangelism-app-prod
-echo   - Size: s-2vcpu-4gb (recommended)
-echo   - Image: ubuntu-22-04-x64
-echo   - Region: nyc1 (or your preferred)
+REM Create production docker-compose file
+echo Creating docker-compose.prod.yml...
+(
+echo version: '3.8'
+echo.
+echo services:
+echo   mysql:
+echo     image: mysql:8.0
+echo     container_name: evangelism-mysql-prod
+echo     restart: unless-stopped
+echo     environment:
+echo       MYSQL_ROOT_PASSWORD: rootpassword
+echo       MYSQL_DATABASE: evangelism_app
+echo       MYSQL_USER: evangelism_user
+echo       MYSQL_PASSWORD: evangelism_password
+echo     volumes:
+echo       - mysql_data:/var/lib/mysql
+echo     networks:
+echo       - evangelism-network
+echo.
+echo   backend:
+echo     build: ./backend
+echo     container_name: evangelism-backend-prod
+echo     restart: unless-stopped
+echo     environment:
+echo       NODE_ENV: production
+echo       PORT: 5000
+echo       DATABASE_URL: mysql://evangelism_user:evangelism_password@mysql:3306/evangelism_app
+echo       JWT_SECRET: your-super-secret-jwt-secret-change-this
+echo       OPENAI_API_KEY: sk-proj-your-openai-api-key-here
+echo       ZOOM_API_KEY: your-zoom-api-key
+echo       ZOOM_API_SECRET: your-zoom-api-secret
+echo       EMAIL_HOST: smtp.gmail.com
+echo       EMAIL_PORT: 587
+echo       EMAIL_USER: your-email@gmail.com
+echo       EMAIL_PASS: your-app-password
+echo     ports:
+echo       - "5000:5000"
+echo     volumes:
+echo       - ./backend:/app
+echo       - /app/node_modules
+echo     depends_on:
+echo       - mysql
+echo     networks:
+echo       - evangelism-network
+echo.
+echo   frontend:
+echo     build: ./frontend
+echo     container_name: evangelism-frontend-prod
+echo     restart: unless-stopped
+echo     environment:
+echo       NEXT_PUBLIC_API_URL: http://%DROPLET_IP%:5000/api
+echo     ports:
+echo       - "3000:3000"
+echo     volumes:
+echo       - ./frontend:/app
+echo       - /app/node_modules
+echo       - /app/.next
+echo     depends_on:
+echo       - backend
+echo     networks:
+echo       - evangelism-network
+echo.
+echo   nginx:
+echo     image: nginx:alpine
+echo     container_name: evangelism-nginx-prod
+echo     restart: unless-stopped
+echo     ports:
+echo       - "80:80"
+echo       - "443:443"
+echo     volumes:
+echo       - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf
+echo       - ./ssl:/etc/nginx/ssl
+echo     depends_on:
+echo       - frontend
+echo       - backend
+echo     networks:
+echo       - evangelism-network
+echo.
+echo volumes:
+echo   mysql_data:
+echo.
+echo networks:
+echo   evangelism-network:
+echo     driver: bridge
+) > docker-compose.prod.yml
+
+REM Create nginx directory and config
+if not exist "nginx" mkdir nginx
+
+echo Creating nginx production config...
+(
+echo events {
+echo     worker_connections 1024;
+echo }
+echo.
+echo http {
+echo     upstream frontend {
+echo         server frontend:3000;
+echo     }
+echo.
+echo     upstream backend {
+echo         server backend:5000;
+echo     }
+echo.
+echo     server {
+echo         listen 80;
+echo         server_name %DROPLET_IP%;
+echo.
+echo         location / {
+echo             proxy_pass http://frontend;
+echo             proxy_set_header Host $host;
+echo             proxy_set_header X-Real-IP $remote_addr;
+echo             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+echo             proxy_set_header X-Forwarded-Proto $scheme;
+echo         }
+echo.
+echo         location /api {
+echo             proxy_pass http://backend;
+echo             proxy_set_header Host $host;
+echo             proxy_set_header X-Real-IP $remote_addr;
+echo             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+echo             proxy_set_header X-Forwarded-Proto $scheme;
+echo         }
+echo     }
+echo }
+) > nginx\nginx.prod.conf
+
+echo.
+echo ========================================
+echo Step 2: Deploy to Digital Ocean
+echo ========================================
 echo.
 
-set /p DROPLET_SIZE="Enter droplet size (s-2vcpu-4gb): "
-set /p DROPLET_REGION="Enter region (nyc1): "
-
+echo Creating deployment script for the server...
+(
+echo #!/bin/bash
+echo echo "Setting up Evangelism App on Digital Ocean..."
 echo.
-echo 🔧 Creating droplet with doctl...
-echo (Make sure doctl is installed: https://github.com/digitalocean/doctl)
+echo # Update system
+echo apt update && apt upgrade -y
 echo.
-
-echo doctl compute droplet create evangelism-app-prod ^
-  --size %DROPLET_SIZE% ^
-  --image ubuntu-22-04-x64 ^
-  --region %DROPLET_REGION% ^
-  --ssh-keys %SSH_KEY_NAME% ^
-  --wait
-
-echo.
-echo ⏳ Waiting for droplet to be ready...
-echo.
-
-echo 📋 Next steps after droplet creation:
-echo   1. SSH into your droplet: ssh root@YOUR_DROPLET_IP
-echo   2. Run the deployment commands below
-echo.
-
-goto deployment_commands
-
-:existing_droplet
-echo.
-echo 🖥️ Deploying to existing droplet...
-echo.
-
-set /p DROPLET_IP="Enter your droplet IP address: "
-
-echo.
-echo 📋 SSH into your droplet and run the deployment commands:
-echo   ssh root@%DROPLET_IP%
-echo.
-
-goto deployment_commands
-
-:generate_commands
-echo.
-echo 📝 Generating deployment commands...
-echo.
-
-goto deployment_commands
-
-:deployment_commands
-echo.
-echo 🚀 DEPLOYMENT COMMANDS
-echo =====================
-echo.
-echo Run these commands on your Digital Ocean droplet:
-echo.
-
-echo # 1. Update system
-echo sudo apt update ^&^& sudo apt upgrade -y
-echo.
-
-echo # 2. Install Docker
+echo # Install Docker
 echo curl -fsSL https://get.docker.com -o get-docker.sh
-echo sudo sh get-docker.sh
-echo sudo usermod -aG docker $USER
+echo sh get-docker.sh
+echo usermod -aG docker $USER
 echo.
-
-echo # 3. Install Docker Compose
-echo sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-echo sudo chmod +x /usr/local/bin/docker-compose
+echo # Install Docker Compose
+echo curl -L "https://github.com/docker/compose/releases/download/v2.21.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+echo chmod +x /usr/local/bin/docker-compose
 echo.
-
-echo # 4. Install Git
-echo sudo apt install git -y
-echo.
-
-echo # 5. Clone your repository
-echo git clone https://github.com/worldbibleproject/bible.git /opt/evangelism-app
+echo # Create app directory
+echo mkdir -p /opt/evangelism-app
 echo cd /opt/evangelism-app
 echo.
-
-echo # 6. Create production environment file
-echo cat ^> .env.production ^<^< EOF
-echo DATABASE_URL="mysql://evangelism_user:CHANGE_THIS_PASSWORD@mysql:3306/evangelism_app"
-echo JWT_SECRET="CHANGE_THIS_TO_A_STRONG_SECRET"
-echo OPENAI_API_KEY="your-openai-api-key"
-echo ZOOM_API_KEY="your-zoom-api-key"
-echo ZOOM_API_SECRET="your-zoom-api-secret"
-echo SMTP_HOST="smtp.sendgrid.net"
-echo SMTP_PORT=587
-echo SMTP_USER="apikey"
-echo SMTP_PASS="your-sendgrid-api-key"
-echo FRONTEND_URL="https://%DOMAIN_NAME%"
-echo NEXT_PUBLIC_API_URL="https://%DOMAIN_NAME%/api"
-echo NEXT_PUBLIC_WS_URL="wss://%DOMAIN_NAME%"
-echo NEXT_PUBLIC_ZOOM_SDK_KEY="your-zoom-sdk-key"
-echo EOF
+echo # Clone repository
+echo git clone https://github.com/your-username/evangelism-app.git .
 echo.
-
-echo # 7. Start the application
-echo docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+echo # Set up environment
+echo cp backend/env.example backend/.env
 echo.
-
-echo # 8. Initialize database
-echo docker-compose exec backend npx prisma db push
-echo docker-compose exec backend npm run db:seed
+echo # Start services
+echo docker-compose -f docker-compose.prod.yml up -d
 echo.
-
-echo # 9. Set up SSL certificate (if domain is configured)
-if not "%DOMAIN_NAME%"=="" (
-    echo sudo apt install certbot python3-certbot-nginx -y
-    echo sudo certbot --nginx -d %DOMAIN_NAME%
-)
+echo # Wait for services
+echo sleep 30
+echo.
+echo # Run database setup
+echo docker-compose -f docker-compose.prod.yml exec backend npx prisma db push
+echo docker-compose -f docker-compose.prod.yml exec backend npx prisma generate
+echo docker-compose -f docker-compose.prod.yml exec backend npx prisma db seed
+echo.
+echo echo "Deployment complete!"
+echo echo "Frontend: http://%DROPLET_IP%:3000"
+echo echo "Backend: http://%DROPLET_IP%:5000"
+) > deploy-server.sh
 
 echo.
-echo 🎉 DEPLOYMENT COMPLETE!
-echo ======================
+echo ========================================
+echo Step 3: Manual Deployment Steps
+echo ========================================
 echo.
-echo Your evangelism platform should now be running at:
-if not "%DOMAIN_NAME%"=="" (
-    echo   https://%DOMAIN_NAME%
-) else (
-    echo   http://YOUR_DROPLET_IP
-)
+echo 1. Copy the following files to your Digital Ocean droplet:
+echo    - All project files
+echo    - docker-compose.prod.yml
+echo    - nginx/nginx.prod.conf
 echo.
-echo 📊 Monitoring available at:
-echo   - Prometheus: http://YOUR_DROPLET_IP:9090
-echo   - Grafana: http://YOUR_DROPLET_IP:3002
+echo 2. SSH into your droplet:
+echo    ssh %SSH_USER%@%DROPLET_IP%
 echo.
-echo 🔧 Useful commands:
-echo   - View logs: docker-compose logs -f
-echo   - Restart services: docker-compose restart
-echo   - Update application: git pull ^&^& docker-compose up -d --build
+echo 3. Run the deployment script:
+echo    chmod +x deploy-server.sh
+echo    ./deploy-server.sh
 echo.
-
-goto end
-
-:invalid_option
-echo ❌ Invalid option selected.
-pause
-exit /b 1
-
-:end
+echo 4. Configure your environment variables in backend/.env:
+echo    - OPENAI_API_KEY
+echo    - ZOOM_API_KEY
+echo    - ZOOM_API_SECRET
+echo    - EMAIL credentials
 echo.
-echo 📚 Additional Resources:
-echo   - Production Environment Setup: PRODUCTION_ENVIRONMENT_SETUP.md
-echo   - Monitoring Guide: monitoring/prometheus.yml
-echo   - Troubleshooting: PRODUCTION_DEPLOYMENT.md
+echo 5. Restart the services:
+echo    docker-compose -f docker-compose.prod.yml restart
+echo.
+echo ========================================
+echo Deployment Files Created
+echo ========================================
+echo.
+echo ✅ docker-compose.prod.yml
+echo ✅ nginx/nginx.prod.conf
+echo ✅ deploy-server.sh
+echo.
+echo Next steps:
+echo 1. Upload these files to your Digital Ocean droplet
+echo 2. Run the deployment script
+echo 3. Configure environment variables
+echo 4. Access your app at http://%DROPLET_IP%
 echo.
 pause

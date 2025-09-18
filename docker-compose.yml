@@ -1,89 +1,69 @@
+version: '3.8'
+
 services:
-  # MySQL Database
   mysql:
     image: mysql:8.0
-    container_name: evangelism_mysql
+    container_name: evangelism-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-evangelism_app}
-      MYSQL_USER: ${MYSQL_USER:-evangelism_user}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-evangelism_password}
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: evangelism_app
+      MYSQL_USER: evangelism_user
+      MYSQL_PASSWORD: evangelism_password
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./backend/prisma/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./bible:/docker-entrypoint-initdb.d
     networks:
-      - evangelism_network
+      - evangelism-network
 
-  # Backend API
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: evangelism_backend
+    build: ./backend
+    container_name: evangelism-backend
     restart: unless-stopped
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      DATABASE_URL: mysql://${MYSQL_USER:-evangelism_user}:${MYSQL_PASSWORD:-evangelism_password}@mysql:3306/${MYSQL_DATABASE:-evangelism_app}
-      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      OPENAI_API_KEY: "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"
-      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USER: ${SMTP_USER}
-      SMTP_PASS: ${SMTP_PASS}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-      PORT: 3001
+      NODE_ENV: development
+      PORT: 5000
+      DATABASE_URL: mysql://evangelism_user:evangelism_password@mysql:3306/evangelism_app
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
+      OPENAI_API_KEY: sk-proj-your-openai-api-key-here
+      ZOOM_API_KEY: your-zoom-api-key
+      ZOOM_API_SECRET: your-zoom-api-secret
+      EMAIL_HOST: smtp.gmail.com
+      EMAIL_PORT: 587
+      EMAIL_USER: your-email@gmail.com
+      EMAIL_PASS: your-app-password
     ports:
-      - "3001:3001"
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
     depends_on:
       - mysql
     networks:
-      - evangelism_network
-    volumes:
-      - ./backend/uploads:/app/uploads
+      - evangelism-network
 
-  # Frontend React App
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: evangelism_frontend
+    build: ./frontend
+    container_name: evangelism-frontend
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
-      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost:3001}
+      NEXT_PUBLIC_API_URL: http://localhost:5000/api
     ports:
       - "3000:3000"
-    depends_on:
-      - backend
-    networks:
-      - evangelism_network
-
-  # Nginx Reverse Proxy
-  nginx:
-    image: nginx:alpine
-    container_name: evangelism_nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/ssl:/etc/nginx/ssl
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
     depends_on:
-      - frontend
       - backend
     networks:
-      - evangelism_network
+      - evangelism-network
 
 volumes:
   mysql_data:
 
 networks:
-  evangelism_network:
+  evangelism-network:
     driver: bridge
-
-

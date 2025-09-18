@@ -1,73 +1,75 @@
-# 🙏 Evangelism App
+# Evangelism App - Complete Platform
 
-A modern, AI-powered evangelism platform that connects seekers with mentors and helps them find local churches. Built with React, Node.js, and powered by OpenAI for personalized spiritual guidance.
+A comprehensive platform for evangelism, mentorship, church finding, and spiritual guidance with AI-powered features.
 
-## ✨ Features
+## 🚀 Features
 
-### 🤖 AI-Powered Spiritual Wizard
-- **Personalized Scripture Selection**: AI analyzes your spiritual journey and selects relevant Bible verses
-- **Custom Prayer Generation**: Tailored prayers based on your specific needs and struggles
-- **Spiritual Guidance**: Intelligent recommendations for your faith journey
+### Core Features
+- **AI-Powered Wizard**: Personalized spiritual guidance and Bible verse recommendations
+- **Church Finder**: Locate churches by denomination, location, and preferences
+- **Mentor Matching**: Connect seekers with mentors based on spiritual needs
+- **Video Calling**: Integrated Zoom video calls for mentorship sessions
+- **Scheduling System**: Book and manage mentorship sessions
+- **User Management**: Role-based access (Admin, Mentor, Seeker)
+- **Bible Integration**: Comprehensive Bible verse database and search
 
-### 👥 Mentorship System
-- **Smart Matching**: AI-powered algorithm matches seekers with compatible mentors
-- **1-on-1 Sessions**: Private mentoring sessions with video calling
-- **Group Sessions**: Targeted group calls (e.g., "Porn Addiction Recovery", "Marriage Counseling")
-- **Availability Management**: Mentors can set their schedules and availability
+### Technical Features
+- **Real-time Communication**: Socket.io for live updates
+- **Authentication**: JWT-based secure authentication
+- **Database**: MySQL with Prisma ORM
+- **Email Notifications**: Automated email system
+- **Responsive Design**: Mobile-first UI with Tailwind CSS
+- **Docker Support**: Containerized deployment
 
-### 🏛️ Church Finder
-- **Local Church Database**: Comprehensive database of churches
-- **Seeker-Church Matching**: Connect seekers with appropriate local churches
-- **Church Vetting**: Verified and vetted church recommendations
-
-### 🔐 Secure & Modern
-- **JWT Authentication**: Secure user authentication and authorization
-- **Role-Based Access**: Seeker, Mentor, Church Finder, and Admin roles
-- **Real-time Messaging**: WebSocket-powered chat system
-- **File Uploads**: Secure document and image sharing
-
-## 🚀 Tech Stack
-
-### Frontend
-- **Next.js 14** - React framework with App Router
-- **TypeScript** - Type-safe development
-- **Tailwind CSS** - Modern, responsive styling
-- **React Query** - Data fetching and caching
-- **Socket.io Client** - Real-time communication
+## 🛠 Tech Stack
 
 ### Backend
-- **Node.js** - JavaScript runtime
-- **Express** - Web framework
-- **TypeScript** - Type-safe development
-- **Prisma** - Database ORM
-- **MySQL** - Database
-- **Socket.io** - Real-time communication
-- **OpenAI API** - AI-powered features
+- Node.js + Express + TypeScript
+- Prisma ORM + MySQL
+- Socket.io for real-time features
+- OpenAI API integration
+- Zoom SDK integration
+- JWT authentication
+- Nodemailer for emails
+
+### Frontend
+- Next.js 14 + React + TypeScript
+- Tailwind CSS for styling
+- React Query for state management
+- Socket.io client
+- @zoom/videosdk for video calls
 
 ### Infrastructure
-- **Docker** - Containerization
-- **Docker Compose** - Multi-container orchestration
-- **Nginx** - Reverse proxy and load balancer
+- Docker + Docker Compose
+- MySQL 8.0
+- Nginx (production)
+- Digital Ocean deployment ready
 
-## 📦 Installation
+## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+
-- Docker & Docker Compose
-- MySQL (or use Docker)
+- Docker and Docker Compose
+- Node.js 18+ (for local development)
+- MySQL 8.0+ (if running without Docker)
 
-### Quick Start
+### Setup
 
-1. **Clone the repository**
+1. **Clone and Setup**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/evangelism-app.git
+   git clone <your-repo-url>
    cd evangelism-app
    ```
 
-2. **Set up environment variables**
+2. **Environment Configuration**
    ```bash
+   # Copy environment files
    cp backend/env.example backend/.env
-   # Edit backend/.env with your API keys
+   
+   # Edit backend/.env with your API keys:
+   # - OPENAI_API_KEY
+   # - ZOOM_API_KEY
+   # - ZOOM_API_SECRET
+   # - EMAIL credentials
    ```
 
 3. **Start with Docker**
@@ -75,132 +77,146 @@ A modern, AI-powered evangelism platform that connects seekers with mentors and 
    docker-compose up -d
    ```
 
-4. **Import Bible data**
+4. **Initialize Database**
    ```bash
-   # Place your CSV file at backend/bible-verses.csv
-   docker-compose exec backend npx tsx src/scripts/import-csv-bible.ts
+   # Run database migrations
+   docker-compose exec backend npx prisma db push
+   
+   # Seed initial data
+   docker-compose exec backend npx prisma db seed
    ```
 
-5. **Access the application**
+5. **Access the Application**
    - Frontend: http://localhost:3000
-   - Backend API: http://localhost:3001
-   - Health Check: http://localhost:3001/health
+   - Backend API: http://localhost:5000
+   - Database: localhost:3306
 
-## 🔑 Required API Keys
+## 📁 Project Structure
 
-### OpenAI API Key
-- **Purpose**: AI-powered wizard and mentor matching
-- **Get it**: https://platform.openai.com/api-keys
-- **Cost**: ~$0.01-0.10 per wizard session
+```
+evangelism-app/
+├── backend/                 # Node.js + Express API
+│   ├── src/
+│   │   ├── routes/         # API routes
+│   │   ├── lib/           # Utilities and services
+│   │   ├── middleware/    # Auth and validation
+│   │   ├── socket/        # Socket.io handlers
+│   │   └── scripts/       # Database scripts
+│   ├── prisma/            # Database schema and migrations
+│   └── Dockerfile
+├── frontend/               # Next.js React app
+│   ├── src/
+│   │   ├── app/           # Next.js 14 app router
+│   │   ├── components/    # React components
+│   │   ├── lib/          # Utilities and API client
+│   │   └── types/        # TypeScript types
+│   └── Dockerfile
+├── bible/                 # Bible data files
+├── docker-compose.yml     # Development environment
+└── README.md
+```
 
-### Gmail SMTP (Optional)
-- **Purpose**: Email invitations and notifications
-- **Setup**: Enable 2FA → Create App Password
-- **Cost**: Free
+## 🔧 Development
 
-### Zoom API (Optional)
-- **Purpose**: Video calling for sessions
-- **Get it**: https://marketplace.zoom.us/
-- **Cost**: Free tier available
+### Local Development
+```bash
+# Backend
+cd backend
+npm install
+npm run dev
 
-## 🎯 User Roles
+# Frontend
+cd frontend
+npm install
+npm run dev
+```
 
-### 👤 Seeker
-- Complete spiritual journey assessment
-- Get AI-generated personalized Scripture
-- Connect with compatible mentors
-- Find local churches
-- Join group sessions
+### Database Management
+```bash
+# View database
+docker-compose exec mysql mysql -u evangelism_user -p evangelism_app
 
-### 👨‍🏫 Mentor
-- Set up detailed profile and availability
-- Create targeted group sessions
-- Manage mentee relationships
-- Conduct 1-on-1 and group sessions
+# Run migrations
+docker-compose exec backend npx prisma db push
 
-### 🏛️ Church Finder
-- Add and manage church database
-- Connect seekers with local churches
-- Vet and verify church information
+# Generate Prisma client
+docker-compose exec backend npx prisma generate
+```
 
-### 👑 Admin
-- Approve user registrations
-- Send mentor/church finder invitations
-- Monitor system statistics
-- Manage user accounts
+## 🚀 Production Deployment
 
-## 📊 Database Schema
+### Digital Ocean Setup
+1. Create a droplet (Ubuntu 22.04, 2GB RAM minimum)
+2. Install Docker and Docker Compose
+3. Clone repository
+4. Configure environment variables
+5. Run `docker-compose -f docker-compose.prod.yml up -d`
 
-### Core Tables
-- `users` - User accounts and authentication
-- `seeker_profiles` - Detailed seeker information
-- `mentor_profiles` - Mentor expertise and availability
-- `churches` - Church database
-- `bible_verses_web` - Bible verse database
+### Environment Variables (Production)
+```bash
+# Database
+DATABASE_URL=mysql://user:password@localhost:3306/evangelism_app
 
-### Relationship Tables
-- `mentor_relationships` - Seeker-mentor connections
-- `church_connections` - Seeker-church connections
-- `sessions` - 1-on-1 mentoring sessions
-- `group_sessions` - Group session templates
+# Security
+JWT_SECRET=your-super-secure-jwt-secret
 
-## 🚀 Deployment
+# APIs
+OPENAI_API_KEY=sk-proj-your-openai-key
+ZOOM_API_KEY=your-zoom-api-key
+ZOOM_API_SECRET=your-zoom-api-secret
 
-### Production Deployment
-1. **Set up server** (Digital Ocean recommended)
-2. **Configure domain** and DNS
-3. **Set up SSL** certificate
-4. **Deploy with Docker**
-5. **Configure production API keys**
+# Email
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASS=your-app-password
+```
 
-See [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md) for detailed instructions.
+## 📊 API Endpoints
 
-## 📱 Features Overview
+### Authentication
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `GET /api/auth/me` - Get current user
 
-### AI Wizard Flow
-1. **Assessment**: Answer questions about your spiritual journey
-2. **AI Analysis**: OpenAI processes your responses
-3. **Personalized Results**: Get custom Scripture selections and prayers
-4. **Next Steps**: Connect with mentors or find churches
+### Wizard
+- `POST /api/wizard/process` - Process wizard responses
+- `GET /api/wizard/results/:id` - Get wizard results
 
-### Mentorship Flow
-1. **Mentor Registration**: Complete profile and set availability
-2. **AI Matching**: System matches seekers with compatible mentors
-3. **Connection**: Seeker requests mentorship
-4. **Sessions**: Conduct 1-on-1 or group sessions
-5. **Progress Tracking**: Monitor spiritual growth
+### Churches
+- `GET /api/churches` - List churches
+- `GET /api/churches/search` - Search churches
+- `POST /api/churches` - Create church (admin)
 
-### Church Finder Flow
-1. **Church Database**: Comprehensive local church information
-2. **Seeker Matching**: Connect seekers with appropriate churches
-3. **Verification**: Vetted and verified church recommendations
-4. **Follow-up**: Track connection success
+### Mentors
+- `GET /api/mentors` - List mentors
+- `GET /api/mentors/:id` - Get mentor details
+- `POST /api/mentors/availability` - Set availability
+
+### Video Calls
+- `POST /api/video/create-meeting` - Create Zoom meeting
+- `GET /api/video/meetings` - List user meetings
+- `POST /api/video/join-meeting` - Join meeting
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Submit a pull request
+4. Test thoroughly
+5. Submit a pull request
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License.
 
-## 🙏 Support
+## 🆘 Support
 
 For support and questions:
-- Create an issue on GitHub
-- Check the documentation files
-- Review the setup guides
-
-## 🎉 Acknowledgments
-
-- **OpenAI** for AI-powered spiritual guidance
-- **Prisma** for database management
-- **Next.js** team for the amazing React framework
-- **Tailwind CSS** for beautiful styling
+- Create an issue in the repository
+- Check the troubleshooting guide
+- Review the API documentation
 
 ---
 
-**Built with ❤️ for the Kingdom of God**
+**Built with ❤️ for spreading the Gospel**
