@@ -17,13 +17,23 @@ import {
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
-interface WizardData {
+interface WizardFormData {
   feeling: string;
   barrier: string;
   heart: string;
   spiritual_background: string;
   life_stage: string;
   preferred_style: string;
+}
+
+interface WizardData {
+  id: number;
+  userId: number;
+  userInput?: any;
+  referencesJson?: string;
+  prayerText?: string;
+  versesJson?: string;
+  createdAt: string;
 }
 
 interface WizardResults {
@@ -36,14 +46,14 @@ export default function WizardPage() {
   const { isAuthenticated, user } = useAuth();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
-  const [wizardData, setWizardData] = useState<WizardData | null>(null);
+  const [wizardData, setWizardData] = useState<WizardFormData | null>(null);
   const [results, setResults] = useState<WizardResults | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const totalSteps = 3;
 
-  const handleStep1Submit = (data: WizardData) => {
+  const handleStep1Submit = (data: WizardFormData) => {
     setWizardData(data);
     setCurrentStep(2);
   };

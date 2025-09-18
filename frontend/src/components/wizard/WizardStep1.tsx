@@ -3,19 +3,26 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/Button';
-import { WizardData } from '@/types';
+interface WizardFormData {
+  feeling: string;
+  barrier: string;
+  heart: string;
+  spiritual_background: string;
+  life_stage: string;
+  preferred_style: string;
+}
 
 interface WizardStep1Props {
-  data: WizardData | null;
-  onSubmit: (data: WizardData) => void;
+  data: WizardFormData | null;
+  onSubmit: (data: WizardFormData) => void;
 }
 
 export function WizardStep1({ data, onSubmit }: WizardStep1Props) {
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<WizardData>({
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<WizardFormData>({
     defaultValues: data || {}
   });
 
-  const onFormSubmit = (formData: WizardData) => {
+  const onFormSubmit = (formData: WizardFormData) => {
     onSubmit(formData);
   };
 
