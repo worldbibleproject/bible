@@ -230,10 +230,19 @@ export default function ChurchFinderDashboard() {
 
         {/* Seekers Tab */}
         {activeTab === 'seekers' && (
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Seekers Looking for Churches</h3>
-              <p className="text-gray-500">Seeker management coming soon.</p>
+          <div className="space-y-6">
+            <div className="bg-white shadow rounded-lg">
+              <div className="px-4 py-5 sm:p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Pending Handoffs</h3>
+                <PendingHandoffs />
+              </div>
+            </div>
+            
+            <div className="bg-white shadow rounded-lg">
+              <div className="px-4 py-5 sm:p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Available Seekers</h3>
+                <AvailableSeekers />
+              </div>
             </div>
           </div>
         )}
@@ -248,6 +257,168 @@ export default function ChurchFinderDashboard() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// Pending Handoffs Component
+function PendingHandoffs() {
+  const [handoffs, setHandoffs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadPendingHandoffs();
+  }, []);
+
+  const loadPendingHandoffs = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/handoff/pending');
+      if (response.data.success) {
+        setHandoffs(response.data.connections);
+      }
+    } catch (error) {
+      console.error('Error loading pending handoffs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateHandoffStatus = async (connectionId: number, status: string, notes?: string) => {
+    try {
+      await api.patch(`/handoff/${connectionId}/status`, { status, notes });
+      await loadPendingHandoffs();
+    } catch (error) {
+      console.error('Error updating handoff status:', error);
+    }
+  };
+
+  if (loading) {
+    return <LoadingSpinner size="sm" />;
+  }
+
+  if (handoffs.length === 0) {
+    return <p className="text-gray-500">No pending handoffs.</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {handoffs.map((handoff) => (
+        <div key={handoff.id} className="border border-gray-200 rounded-lg p-4">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <h4 className="text-lg font-medium text-gray-900">
+                {handoff.seeker.user.username}
+              </h4>
+              <p className="text-sm text-gray-600">{handoff.seeker.user.email}</p>
+              <p className="text-sm text-gray-600">📍 {handoff.seeker.user.location || 'Location not specified'}</p>
+              
+              <div className="mt-2 p-3 bg-gray-50 rounded-md">
+                <p className="text-sm text-gray-700">
+                  <strong>Mentor Notes:</strong> {handoff.connectionNotes}
+                </p>
+              </div>
+            </div>
+            
+            <div className="ml-4 flex flex-col space-y-2">
+              <Button
+                onClick={() => updateHandoffStatus(handoff.id, 'CONTACTED')}
+                className="bg-blue-600 hover:bg-blue-700 text-sm"
+              >
+                Mark as Contacted
+              </Button>
+              <Button
+                onClick={() => updateHandoffStatus(handoff.id, 'VISITED')}
+                className="bg-green-600 hover:bg-green-700 text-sm"
+              >
+                Visited Church
+              </Button>
+              <Button
+                onClick={() => updateHandoffStatus(handoff.id, 'JOINED')}
+                className="bg-purple-600 hover:bg-purple-700 text-sm"
+              >
+                Joined Church
+              </Button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Available Seekers Component
+function AvailableSeekers() {
+  const [seekers, setSeekers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadAvailableSeekers();
+  }, []);
+
+  const loadAvailableSeekers = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/churches/seekers');
+      if (response.data.success) {
+        setSeekers(response.data.seekers);
+      }
+    } catch (error) {
+      console.error('Error loading available seekers:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const connectToChurch = async (seekerId: number, churchId: number) => {
+    try {
+      await api.post(`/churches/${churchId}/connect/${seekerId}`, {
+        connectionNotes: 'Direct connection initiated by church finder'
+      });
+      await loadAvailableSeekers();
+    } catch (error) {
+      console.error('Error connecting seeker to church:', error);
+    }
+  };
+
+  if (loading) {
+    return <LoadingSpinner size="sm" />;
+  }
+
+  if (seekers.length === 0) {
+    return <p className="text-gray-500">No available seekers.</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {seekers.map((seeker) => (
+        <div key={seeker.id} className="border border-gray-200 rounded-lg p-4">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <h4 className="text-lg font-medium text-gray-900">
+                {seeker.user.username}
+              </h4>
+              <p className="text-sm text-gray-600">{seeker.user.email}</p>
+              <p className="text-sm text-gray-600">📍 {seeker.user.location || 'Location not specified'}</p>
+              
+              <div className="mt-2 text-sm text-gray-600">
+                <p><strong>Faith Level:</strong> {seeker.faithLevel || 'Not specified'}</p>
+                <p><strong>Church Background:</strong> {seeker.churchBackground || 'Not specified'}</p>
+                <p><strong>Preferred Format:</strong> {seeker.preferredFormat || 'Not specified'}</p>
+              </div>
+            </div>
+            
+            <div className="ml-4">
+              <Button
+                onClick={() => connectToChurch(seeker.user.id, 1)} // Default church ID
+                className="bg-blue-600 hover:bg-blue-700 text-sm"
+              >
+                Connect to Church
+              </Button>
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

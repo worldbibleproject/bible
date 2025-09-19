@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Evangelism App - Digital Ocean Deployment Script
-# Run this script on your Digital Ocean droplet
+# Evangelism App Digital Ocean Deployment Script
+# This script deploys the complete application to Digital Ocean
 
-set -e  # Exit on any error
+set -e
 
 echo "🚀 Starting Evangelism App deployment on Digital Ocean..."
 
@@ -11,16 +11,11 @@ echo "🚀 Starting Evangelism App deployment on Digital Ocean..."
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Function to print colored output
 print_status() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
-
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
+    echo -e "${GREEN}[INFO]${NC} $1"
 }
 
 print_warning() {
@@ -31,244 +26,180 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Get droplet IP
-DROPLET_IP=$(curl -s ifconfig.me)
+# Detect droplet IP
+DROPLET_IP=$(curl -s http://169.254.169.254/metadata/v1/interfaces/public/0/ipv4/address 2>/dev/null || echo "137.184.187.189")
 print_status "Detected droplet IP: $DROPLET_IP"
 
-# Step 1: Update system
+# Update system packages
 print_status "Updating system packages..."
-apt update && apt upgrade -y
-print_success "System updated"
+apt-get update -y
+apt-get upgrade -y
 
-# Step 2: Install Docker
-print_status "Installing Docker..."
+# Install Docker if not present
 if ! command -v docker &> /dev/null; then
+    print_status "Installing Docker..."
     curl -fsSL https://get.docker.com -o get-docker.sh
     sh get-docker.sh
-    usermod -aG docker $USER
-    print_success "Docker installed"
-else
-    print_warning "Docker already installed"
+    usermod -aG docker root
+    systemctl enable docker
+    systemctl start docker
 fi
 
-# Step 3: Install Docker Compose
-print_status "Installing Docker Compose..."
+# Install Docker Compose if not present
 if ! command -v docker-compose &> /dev/null; then
-    curl -L "https://github.com/docker/compose/releases/download/v2.21.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    print_status "Installing Docker Compose..."
+    curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
     chmod +x /usr/local/bin/docker-compose
-    print_success "Docker Compose installed"
-else
-    print_warning "Docker Compose already installed"
 fi
 
-# Step 4: Clone repository
-print_status "Cloning repository..."
-if [ ! -d "evangelism-app" ]; then
-    git clone https://github.com/worldbibleproject/bible.git evangelism-app
-    print_success "Repository cloned"
-else
-    print_warning "Repository already exists, updating..."
-    cd evangelism-app
+# Install Nginx if not present
+if ! command -v nginx &> /dev/null; then
+    print_status "Installing Nginx..."
+    apt-get install -y nginx
+    systemctl enable nginx
+fi
+
+# Install Certbot for SSL
+if ! command -v certbot &> /dev/null; then
+    print_status "Installing Certbot for SSL..."
+    apt-get install -y certbot python3-certbot-nginx
+fi
+
+# Create application directory
+APP_DIR="/root/evangelism-app"
+print_status "Creating application directory: $APP_DIR"
+mkdir -p $APP_DIR
+cd $APP_DIR
+
+# Stop any existing containers
+print_status "Stopping existing containers..."
+docker-compose -f docker-compose.prod.yml down 2>/dev/null || true
+
+# Pull latest code from GitHub
+print_status "Pulling latest code from GitHub..."
+if [ -d ".git" ]; then
     git pull origin main
-    cd ..
-fi
-
-cd evangelism-app
-
-# Step 5: Create environment file
-print_status "Creating environment configuration..."
-if [ ! -f "backend/.env" ]; then
-    cp backend/env.example backend/.env
-    print_success "Environment file created"
 else
-    print_warning "Environment file already exists"
+    git clone https://github.com/worldbibleproject/bible.git .
 fi
 
-# Step 6: Create production docker-compose
-print_status "Creating production Docker Compose configuration..."
-cat > docker-compose.prod.yml << EOF
-version: '3.8'
+# Set up environment variables
+print_status "Setting up environment variables..."
+if [ ! -f ".env" ]; then
+    cp env.production .env
+    # Update environment variables for production
+    sed -i "s/localhost:5000/$DROPLET_IP/g" .env
+    sed -i "s/localhost:3000/$DROPLET_IP/g" .env
+    print_warning "Please update .env file with your actual API keys and secrets!"
+fi
 
-services:
-  mysql:
-    image: mysql:8.0
-    container_name: evangelism-mysql-prod
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: evangelism_app
-      MYSQL_USER: evangelism_user
-      MYSQL_PASSWORD: evangelism_password
-    volumes:
-      - mysql_data:/var/lib/mysql
-    networks:
-      - evangelism-network
-
-  backend:
-    build: ./backend
-    container_name: evangelism-backend-prod
-    restart: unless-stopped
-    environment:
-      NODE_ENV: production
-      PORT: 5000
-      DATABASE_URL: mysql://evangelism_user:evangelism_password@mysql:3306/evangelism_app
-      JWT_SECRET: your-super-secret-jwt-secret-change-this-in-production
-      OPENAI_API_KEY: sk-proj-your-openai-api-key-here
-      ZOOM_API_KEY: your-zoom-api-key
-      ZOOM_API_SECRET: your-zoom-api-secret
-      EMAIL_HOST: smtp.gmail.com
-      EMAIL_PORT: 587
-      EMAIL_USER: your-email@gmail.com
-      EMAIL_PASS: your-app-password
-    ports:
-      - "5000:5000"
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
-    depends_on:
-      - mysql
-    networks:
-      - evangelism-network
-
-  frontend:
-    build: ./frontend
-    container_name: evangelism-frontend-prod
-    restart: unless-stopped
-    environment:
-      NEXT_PUBLIC_API_URL: http://$DROPLET_IP:5000/api
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
-    depends_on:
-      - backend
-    networks:
-      - evangelism-network
-
-  nginx:
-    image: nginx:alpine
-    container_name: evangelism-nginx-prod
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf
-    depends_on:
-      - frontend
-      - backend
-    networks:
-      - evangelism-network
-
-volumes:
-  mysql_data:
-
-networks:
-  evangelism-network:
-    driver: bridge
-EOF
-
-# Step 7: Create nginx configuration
-print_status "Creating Nginx configuration..."
-mkdir -p nginx
-
-cat > nginx/nginx.prod.conf << EOF
-events {
-    worker_connections 1024;
-}
-
-http {
-    upstream frontend {
-        server frontend:3000;
-    }
-
-    upstream backend {
-        server backend:5000;
-    }
-
-    server {
-        listen 80;
-        server_name $DROPLET_IP;
-
-        location / {
-            proxy_pass http://frontend;
-            proxy_set_header Host \$host;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto \$scheme;
-        }
-
-        location /api {
-            proxy_pass http://backend;
-            proxy_set_header Host \$host;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto \$scheme;
-        }
-    }
-}
-EOF
-
-# Step 8: Build and start services
+# Build and start services
 print_status "Building and starting services..."
 docker-compose -f docker-compose.prod.yml up -d --build
 
-# Step 9: Wait for services to start
-print_status "Waiting for services to start..."
+# Wait for services to be ready
+print_status "Waiting for services to be ready..."
 sleep 30
 
-# Step 10: Check service status
-print_status "Checking service status..."
+# Check service health
+print_status "Checking service health..."
 docker-compose -f docker-compose.prod.yml ps
 
-# Step 11: Initialize database
-print_status "Initializing database..."
-docker-compose -f docker-compose.prod.yml exec backend npx prisma db push
-docker-compose -f docker-compose.prod.yml exec backend npx prisma generate
-docker-compose -f docker-compose.prod.yml exec backend npx prisma db seed
-
-# Step 12: Test endpoints
-print_status "Testing endpoints..."
-sleep 10
-
-if curl -f http://localhost/health > /dev/null 2>&1; then
-    print_success "Backend health check passed"
+# Test API endpoints
+print_status "Testing API endpoints..."
+if curl -f http://localhost:5000/health; then
+    print_status "Backend health check passed"
 else
     print_error "Backend health check failed"
 fi
 
-if curl -f http://localhost > /dev/null 2>&1; then
-    print_success "Frontend accessibility check passed"
+if curl -f http://localhost:3000; then
+    print_status "Frontend health check passed"
 else
-    print_error "Frontend accessibility check failed"
+    print_error "Frontend health check failed"
 fi
 
-# Step 13: Display final information
-echo ""
-echo "🎉 Deployment Complete!"
-echo "=========================="
-echo ""
-echo "Your Evangelism App is now live at:"
-echo "🌐 Frontend: http://$DROPLET_IP"
-echo "🔧 Backend API: http://$DROPLET_IP/api"
-echo "❤️ Health Check: http://$DROPLET_IP/health"
-echo ""
-echo "Default Login Credentials:"
-echo "👨‍💼 Admin: admin@evangelismapp.com / admin123"
-echo "🧑‍🏫 Mentor: mentor1@example.com / mentor123"
-echo "👤 Seeker: seeker1@example.com / seeker123"
-echo ""
-echo "Next Steps:"
-echo "1. Configure your API keys in backend/.env"
-echo "2. Restart services: docker-compose -f docker-compose.prod.yml restart"
-echo "3. Set up SSL certificates (optional)"
-echo ""
-echo "Useful Commands:"
-echo "📊 View logs: docker-compose -f docker-compose.prod.yml logs -f"
-echo "🔄 Restart: docker-compose -f docker-compose.prod.yml restart"
-echo "📈 Status: docker-compose -f docker-compose.prod.yml ps"
-echo ""
+# Set up Nginx reverse proxy
+print_status "Setting up Nginx reverse proxy..."
+cat > /etc/nginx/sites-available/evangelism-app << EOF
+server {
+    listen 80;
+    server_name $DROPLET_IP;
 
-print_success "Evangelism App deployment completed successfully! 🚀"
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    location /api/ {
+        proxy_pass http://localhost:5000/api/;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    location /health {
+        proxy_pass http://localhost:5000/health;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
+
+# Enable the site
+ln -sf /etc/nginx/sites-available/evangelism-app /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+
+# Test and reload Nginx
+nginx -t && systemctl reload nginx
+
+# Set up SSL (optional - requires domain name)
+print_status "SSL setup (optional - requires domain name)"
+print_warning "To set up SSL, run: certbot --nginx -d yourdomain.com"
+
+# Create systemd service for auto-start
+print_status "Creating systemd service for auto-start..."
+cat > /etc/systemd/system/evangelism-app.service << EOF
+[Unit]
+Description=Evangelism App
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=$APP_DIR
+ExecStart=/usr/local/bin/docker-compose -f docker-compose.prod.yml up -d
+ExecStop=/usr/local/bin/docker-compose -f docker-compose.prod.yml down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl enable evangelism-app.service
+
+# Final status check
+print_status "Final deployment status:"
+echo "✅ Application URL: http://$DROPLET_IP"
+echo "✅ API URL: http://$DROPLET_IP/api"
+echo "✅ Health Check: http://$DROPLET_IP/health"
+echo ""
+echo "📋 Next steps:"
+echo "1. Update .env file with your actual API keys"
+echo "2. Set up SSL with: certbot --nginx -d yourdomain.com"
+echo "3. Configure your domain DNS to point to $DROPLET_IP"
+echo ""
+echo "🔧 Management commands:"
+echo "- View logs: docker-compose -f docker-compose.prod.yml logs"
+echo "- Restart: docker-compose -f docker-compose.prod.yml restart"
+echo "- Update: git pull && docker-compose -f docker-compose.prod.yml up -d --build"
+
+print_status "Deployment completed successfully! 🎉"
+

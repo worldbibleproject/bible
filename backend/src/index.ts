@@ -20,6 +20,7 @@ import messageRoutes from './routes/messages';
 import wizardRoutes from './routes/wizard';
 import adminRoutes from './routes/admin';
 import videoRoutes from './routes/video';
+import handoffRoutes from './routes/handoff';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -41,7 +42,7 @@ const io = new Server(server, {
   },
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(helmet());
@@ -78,6 +79,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/wizard', wizardRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/video', videoRoutes);
+app.use('/api/handoff', handoffRoutes);
 
 // Error handling
 app.use(notFound);

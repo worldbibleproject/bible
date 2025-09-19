@@ -41,7 +41,7 @@
     "react-pdf": "7.6.0",
     "jspdf": "2.5.1",
     "html2canvas": "1.4.1",
-    "@zoom/videosdk": "^1.0.0"
+    "@zoom/meetingsdk": "^2.0.0"
   },
   "devDependencies": {
     "eslint": "8.56.0",

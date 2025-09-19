@@ -174,11 +174,7 @@ async function main() {
   for (const verse of sampleVerses) {
     await prisma.bibleVerse.upsert({
       where: {
-        book_chapter_verse: {
-          book: verse.book,
-          chapter: verse.chapter,
-          verse: verse.verse,
-        },
+        id: verse.book * 1000000 + verse.chapter * 1000 + verse.verse,
       },
       update: {},
       create: verse,

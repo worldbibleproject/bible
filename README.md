@@ -1,167 +1,136 @@
-# Evangelism App - Complete Platform
+# Evangelism App - Complete Production Setup
 
-A comprehensive platform for evangelism, mentorship, church finding, and spiritual guidance with AI-powered features.
-
-## 🚀 Features
-
-### Core Features
-- **AI-Powered Wizard**: Personalized spiritual guidance and Bible verse recommendations
-- **Church Finder**: Locate churches by denomination, location, and preferences
-- **Mentor Matching**: Connect seekers with mentors based on spiritual needs
-- **Video Calling**: Integrated Zoom video calls for mentorship sessions
-- **Scheduling System**: Book and manage mentorship sessions
-- **User Management**: Role-based access (Admin, Mentor, Seeker)
-- **Bible Integration**: Comprehensive Bible verse database and search
-
-### Technical Features
-- **Real-time Communication**: Socket.io for live updates
-- **Authentication**: JWT-based secure authentication
-- **Database**: MySQL with Prisma ORM
-- **Email Notifications**: Automated email system
-- **Responsive Design**: Mobile-first UI with Tailwind CSS
-- **Docker Support**: Containerized deployment
-
-## 🛠 Tech Stack
-
-### Backend
-- Node.js + Express + TypeScript
-- Prisma ORM + MySQL
-- Socket.io for real-time features
-- OpenAI API integration
-- Zoom SDK integration
-- JWT authentication
-- Nodemailer for emails
-
-### Frontend
-- Next.js 14 + React + TypeScript
-- Tailwind CSS for styling
-- React Query for state management
-- Socket.io client
-- @zoom/videosdk for video calls
-
-### Infrastructure
-- Docker + Docker Compose
-- MySQL 8.0
-- Nginx (production)
-- Digital Ocean deployment ready
+A comprehensive evangelism and discipleship platform with AI-powered spiritual guidance, mentor matching, church connections, and video calling capabilities.
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 - Docker and Docker Compose
 - Node.js 18+ (for local development)
-- MySQL 8.0+ (if running without Docker)
+- Git
 
-### Setup
+### Local Development
+```bash
+# Clone the repository
+git clone https://github.com/worldbibleproject/bible.git
+cd bible
 
-1. **Clone and Setup**
-   ```bash
-   git clone <your-repo-url>
-   cd evangelism-app
-   ```
+# Copy environment file
+cp backend/env.example .env
 
-2. **Environment Configuration**
-   ```bash
-   # Copy environment files
-   cp backend/env.example backend/.env
-   
-   # Edit backend/.env with your API keys:
-   # - OPENAI_API_KEY
-   # - ZOOM_API_KEY
-   # - ZOOM_API_SECRET
-   # - EMAIL credentials
-   ```
+# Edit .env with your actual values (especially API keys)
+# Required: OPENAI_API_KEY, EMAIL_USER, EMAIL_PASS
 
-3. **Start with Docker**
-   ```bash
-   docker-compose up -d
-   ```
+# Start all services
+docker-compose up -d
 
-4. **Initialize Database**
-   ```bash
-   # Run database migrations
-   docker-compose exec backend npx prisma db push
-   
-   # Seed initial data
-   docker-compose exec backend npx prisma db seed
-   ```
+# View logs
+docker-compose logs -f
 
-5. **Access the Application**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:5000
-   - Database: localhost:3306
+# Stop services
+docker-compose down
+```
+
+### First Time Setup
+```bash
+# After starting services, seed the database
+docker-compose exec backend npm run db:seed
+
+# Access the application
+# Frontend: http://localhost:3000
+# Backend API: http://localhost:5000
+# Health Check: http://localhost:5000/health
+```
+
+### Production Deployment
+```bash
+# Deploy to Digital Ocean
+curl -o deploy-to-digitalocean.sh https://raw.githubusercontent.com/worldbibleproject/bible/main/deploy-to-digitalocean.sh
+chmod +x deploy-to-digitalocean.sh
+./deploy-to-digitalocean.sh
+```
 
 ## 📁 Project Structure
 
 ```
 evangelism-app/
-├── backend/                 # Node.js + Express API
+├── backend/                 # Node.js/Express API
 │   ├── src/
-│   │   ├── routes/         # API routes
-│   │   ├── lib/           # Utilities and services
-│   │   ├── middleware/    # Auth and validation
-│   │   ├── socket/        # Socket.io handlers
-│   │   └── scripts/       # Database scripts
-│   ├── prisma/            # Database schema and migrations
+│   │   ├── routes/         # API endpoints
+│   │   ├── lib/           # Services (auth, email, zoom, etc.)
+│   │   ├── middleware/    # Auth, error handling
+│   │   └── socket/        # WebSocket handlers
+│   ├── prisma/            # Database schema
 │   └── Dockerfile
 ├── frontend/               # Next.js React app
 │   ├── src/
 │   │   ├── app/           # Next.js 14 app router
 │   │   ├── components/    # React components
-│   │   ├── lib/          # Utilities and API client
-│   │   └── types/        # TypeScript types
+│   │   ├── contexts/      # React contexts
+│   │   └── lib/           # Utilities
 │   └── Dockerfile
-├── bible/                 # Bible data files
-├── docker-compose.yml     # Development environment
-└── README.md
+├── nginx/                  # Reverse proxy config
+├── docker-compose.yml      # Local development
+├── docker-compose.prod.yml # Production deployment
+└── deploy-to-digitalocean.sh # Deployment script
 ```
 
-## 🔧 Development
+## 🔧 Features
 
-### Local Development
-```bash
-# Backend
-cd backend
-npm install
-npm run dev
+### Core Features
+- **AI Spiritual Wizard**: Personalized guidance using OpenAI
+- **User Management**: Seeker, Mentor, Church Finder, Admin roles
+- **Mentor Matching**: AI-powered mentor-seeker matching
+- **Church Connections**: Connect seekers with local churches
+- **Video Calling**: Zoom integration for sessions
+- **Scheduling**: Calendar-based session booking
+- **Messaging**: Real-time chat system
 
-# Frontend
-cd frontend
-npm install
-npm run dev
-```
+### User Types
+1. **Seeker**: Someone seeking spiritual guidance
+2. **Mentor**: Experienced Christian providing guidance
+3. **Church Finder**: Helps connect seekers with churches
+4. **Admin**: Platform administration
 
-### Database Management
-```bash
-# View database
-docker-compose exec mysql mysql -u evangelism_user -p evangelism_app
+## 🛠 Technology Stack
 
-# Run migrations
-docker-compose exec backend npx prisma db push
+### Backend
+- **Node.js** with Express
+- **TypeScript** for type safety
+- **Prisma** ORM with MySQL
+- **Socket.io** for real-time communication
+- **OpenAI API** for AI features
+- **Zoom SDK** for video calling
+- **JWT** authentication
 
-# Generate Prisma client
-docker-compose exec backend npx prisma generate
-```
+### Frontend
+- **Next.js 14** with App Router
+- **React** with TypeScript
+- **Tailwind CSS** for styling
+- **React Query** for data fetching
+- **Socket.io Client** for real-time features
 
-## 🚀 Production Deployment
+### Infrastructure
+- **Docker** containerization
+- **Nginx** reverse proxy
+- **MySQL** database
+- **Digital Ocean** hosting
 
-### Digital Ocean Setup
-1. Create a droplet (Ubuntu 22.04, 2GB RAM minimum)
-2. Install Docker and Docker Compose
-3. Clone repository
-4. Configure environment variables
-5. Run `docker-compose -f docker-compose.prod.yml up -d`
+## 🔐 Environment Variables
 
-### Environment Variables (Production)
-```bash
+Create a `.env` file with:
+
+```env
 # Database
-DATABASE_URL=mysql://user:password@localhost:3306/evangelism_app
+DATABASE_URL=mysql://evangelism_user:evangelism_password@mysql:3306/evangelism_db
 
-# Security
-JWT_SECRET=your-super-secure-jwt-secret
+# JWT Secret
+JWT_SECRET=your-super-secret-jwt-key
 
-# APIs
-OPENAI_API_KEY=sk-proj-your-openai-key
+# OpenAI API
+OPENAI_API_KEY=sk-proj-your-openai-api-key
+
+# Zoom API (Optional)
 ZOOM_API_KEY=your-zoom-api-key
 ZOOM_API_SECRET=your-zoom-api-secret
 
@@ -172,51 +141,163 @@ EMAIL_USER=your-email@gmail.com
 EMAIL_PASS=your-app-password
 ```
 
-## 📊 API Endpoints
+## 📊 Database Schema
+
+The app uses a comprehensive MySQL schema with tables for:
+- Users and profiles
+- Sessions and mentoring relationships
+- Church connections
+- Messages and notifications
+- AI wizard data
+- Bible verses and references
+
+## 🚀 Deployment
+
+### Digital Ocean Setup
+1. Create a droplet (Ubuntu 22.04)
+2. Run the deployment script
+3. Update environment variables
+4. Set up SSL with Certbot
+
+### Manual Deployment
+```bash
+# Clone repository
+git clone https://github.com/worldbibleproject/bible.git
+cd bible
+
+# Set up environment
+cp env.production .env
+# Edit .env with your values
+
+# Deploy
+docker-compose -f docker-compose.prod.yml up -d --build
+```
+
+## 🔍 API Endpoints
 
 ### Authentication
-- `POST /api/auth/register` - User registration
 - `POST /api/auth/login` - User login
-- `GET /api/auth/me` - Get current user
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/logout` - User logout
 
 ### Wizard
 - `POST /api/wizard/process` - Process wizard responses
 - `GET /api/wizard/results/:id` - Get wizard results
 
-### Churches
-- `GET /api/churches` - List churches
-- `GET /api/churches/search` - Search churches
-- `POST /api/churches` - Create church (admin)
-
-### Mentors
+### Users & Profiles
+- `GET /api/users/profile` - Get user profile
+- `PUT /api/users/profile` - Update profile
 - `GET /api/mentors` - List mentors
-- `GET /api/mentors/:id` - Get mentor details
-- `POST /api/mentors/availability` - Set availability
+- `GET /api/seekers` - List seekers
 
-### Video Calls
+### Sessions
+- `POST /api/sessions` - Create session
+- `GET /api/sessions` - List sessions
+- `PUT /api/sessions/:id` - Update session
+
+### Video Calling
 - `POST /api/video/create-meeting` - Create Zoom meeting
-- `GET /api/video/meetings` - List user meetings
-- `POST /api/video/join-meeting` - Join meeting
+- `GET /api/video/meetings` - List meetings
+
+## 🧪 Testing
+
+```bash
+# Test API endpoints
+curl http://localhost:5000/health
+curl http://localhost:5000/api/auth/login
+
+# Test frontend
+curl http://localhost:3000
+```
+
+## 📝 Development
+
+### Adding New Features
+1. Create backend routes in `backend/src/routes/`
+2. Add frontend components in `frontend/src/components/`
+3. Update database schema in `backend/prisma/schema.prisma`
+4. Run `npx prisma db push` to update database
+
+### Code Style
+- Use TypeScript for type safety
+- Follow React best practices
+- Use Tailwind CSS for styling
+- Implement proper error handling
+
+## 🆘 Troubleshooting
+
+### Common Issues
+1. **Database connection**: Check DATABASE_URL in .env file
+2. **API keys**: Verify OpenAI and Zoom API keys are set
+3. **Docker issues**: Run `docker system prune -f`
+4. **Build failures**: Check TypeScript errors
+5. **Port conflicts**: Ensure ports 3000, 5000, and 3306 are available
+6. **Permission issues**: On Linux/Mac, ensure Docker has proper permissions
+
+### Health Checks
+```bash
+# Check if services are running
+docker-compose ps
+
+# Test API health
+curl http://localhost:5000/health
+
+# Test frontend
+curl http://localhost:3000
+```
+
+### Database Issues
+```bash
+# Reset database
+docker-compose down -v
+docker-compose up -d
+
+# Re-seed database
+docker-compose exec backend npm run db:seed
+
+# Access database directly
+docker-compose exec mysql mysql -u evangelism_user -p evangelism_db
+```
+
+### Logs
+```bash
+# View all logs
+docker-compose logs -f
+
+# View specific service logs
+docker-compose logs -f backend
+docker-compose logs -f frontend
+docker-compose logs -f mysql
+
+# View logs with timestamps
+docker-compose logs -f -t
+```
+
+### Development Mode
+```bash
+# Run backend in development mode
+cd backend
+npm install
+npm run dev
+
+# Run frontend in development mode
+cd frontend
+npm install
+npm run dev
+```
+
+## 📄 License
+
+This project is licensed under the MIT License.
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+4. Submit a pull request
 
-## 📄 License
+## 📞 Support
 
-This project is licensed under the MIT License.
+For support, please open an issue on GitHub or contact the development team.
 
-## 🆘 Support
-
-For support and questions:
-- Create an issue in the repository
-- Check the troubleshooting guide
-- Review the API documentation
-
----
-
-**Built with ❤️ for spreading the Gospel**

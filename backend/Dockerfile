@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     g++ \
     openssl \
     libssl-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
@@ -41,7 +42,11 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:5000/health || exit 1
 
-# Start the application (using tsx directly)
-CMD ["npx", "tsx", "src/index.ts"]
+# Copy startup script
+COPY start.sh ./
+RUN chmod +x start.sh
+
+# Start the application
+CMD ["./start.sh"]
 
 

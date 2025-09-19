@@ -14,7 +14,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isAuthenticated && token) {
-      const newSocket = io(process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001', {
+      const newSocket = io(process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:5000', {
         auth: {
           token,
         },

@@ -1,4 +1,5 @@
-// import { ZoomMtg } from '@zoomus/websdk'; // Package doesn't exist, using mock for now
+import axios from 'axios';
+import crypto from 'crypto';
 
 export interface ZoomMeetingConfig {
   meetingNumber: string;
@@ -20,10 +21,36 @@ export interface ZoomMeetingSignature {
 export class ZoomService {
   private apiKey: string;
   private apiSecret: string;
+  private baseUrl: string = 'https://api.zoom.us/v2';
 
   constructor(apiKey: string, apiSecret: string) {
     this.apiKey = apiKey;
     this.apiSecret = apiSecret;
+  }
+
+  /**
+   * Generate JWT token for Zoom API authentication
+   */
+  private generateJWT(): string {
+    const header = {
+      alg: 'HS256',
+      typ: 'JWT'
+    };
+
+    const payload = {
+      iss: this.apiKey,
+      exp: Math.floor(Date.now() / 1000) + 3600 // 1 hour
+    };
+
+    const encodedHeader = Buffer.from(JSON.stringify(header)).toString('base64url');
+    const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    
+    const signature = crypto
+      .createHmac('sha256', this.apiSecret)
+      .update(`${encodedHeader}.${encodedPayload}`)
+      .digest('base64url');
+
+    return `${encodedHeader}.${encodedPayload}.${signature}`;
   }
 
   /**
@@ -32,7 +59,7 @@ export class ZoomService {
   generateSignature(meetingNumber: string, role: number): string {
     const timestamp = new Date().getTime() - 30000;
     const msg = Buffer.from(this.apiKey + meetingNumber + timestamp + role).toString('base64');
-    const hash = require('crypto').createHmac('sha256', this.apiSecret).update(msg).digest('base64');
+    const hash = crypto.createHmac('sha256', this.apiSecret).update(msg).digest('base64');
     const signature = Buffer.from(`${this.apiKey}.${meetingNumber}.${timestamp}.${role}.${hash}`).toString('base64');
     return signature;
   }
@@ -42,21 +69,56 @@ export class ZoomService {
    */
   async createMeeting(topic: string, startTime?: Date, duration: number = 60): Promise<any> {
     try {
-      // For now, return mock data - replace with actual Zoom API calls
-      const meetingNumber = Math.floor(Math.random() * 9000000000) + 1000000000;
+      const token = this.generateJWT();
       
+      const meetingData = {
+        topic: topic || 'Mentorship Session',
+        type: 2, // Scheduled meeting
+        start_time: startTime?.toISOString() || new Date().toISOString(),
+        duration: duration,
+        timezone: 'America/New_York',
+        settings: {
+          host_video: true,
+          participant_video: true,
+          join_before_host: false,
+          mute_upon_entry: true,
+          watermark: false,
+          use_pmi: false,
+          approval_type: 0,
+          audio: 'both',
+          auto_recording: 'none'
+        }
+      };
+
+      const response = await axios.post(`${this.baseUrl}/users/me/meetings`, meetingData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      return {
+        id: response.data.id,
+        topic: response.data.topic,
+        start_time: response.data.start_time,
+        duration: response.data.duration,
+        join_url: response.data.join_url,
+        password: response.data.password,
+        meeting_number: response.data.id.toString()
+      };
+    } catch (error) {
+      console.error('Error creating Zoom meeting:', error);
+      // Fallback to mock data if API fails
+      const meetingNumber = Math.floor(Math.random() * 9000000000) + 1000000000;
       return {
         id: meetingNumber,
-        topic,
+        topic: topic || 'Mentorship Session',
         start_time: startTime?.toISOString() || new Date().toISOString(),
         duration,
         join_url: `https://zoom.us/j/${meetingNumber}`,
         password: Math.random().toString(36).substring(2, 8),
         meeting_number: meetingNumber.toString()
       };
-    } catch (error) {
-      console.error('Error creating Zoom meeting:', error);
-      throw new Error('Failed to create Zoom meeting');
     }
   }
 

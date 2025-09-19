@@ -1,0 +1,104 @@
+name: wizard
+services:
+  backend:
+    build:
+      context: C:\Users\Jeff\Desktop\wizard\backend
+      dockerfile: Dockerfile
+    container_name: evangelism-backend
+    depends_on:
+      mysql:
+        condition: service_started
+        required: true
+    environment:
+      DATABASE_URL: mysql://evangelism_user:evangelism_password@mysql:3306/evangelism_app
+      EMAIL_HOST: smtp.gmail.com
+      EMAIL_PASS: your-app-password
+      EMAIL_PORT: "587"
+      EMAIL_USER: your-email@gmail.com
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
+      NODE_ENV: development
+      OPENAI_API_KEY: sk-proj-your-openai-api-key-here
+      PORT: "5000"
+      ZOOM_API_KEY: your-zoom-api-key
+      ZOOM_API_SECRET: your-zoom-api-secret
+    networks:
+      evangelism-network: null
+    ports:
+      - mode: ingress
+        target: 5000
+        published: "5000"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: C:\Users\Jeff\Desktop\wizard\backend
+        target: /app
+        bind:
+          create_host_path: true
+      - type: volume
+        target: /app/node_modules
+        volume: {}
+  frontend:
+    build:
+      context: C:\Users\Jeff\Desktop\wizard\frontend
+      dockerfile: Dockerfile
+    container_name: evangelism-frontend
+    depends_on:
+      backend:
+        condition: service_started
+        required: true
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:5000/api
+    networks:
+      evangelism-network: null
+    ports:
+      - mode: ingress
+        target: 3000
+        published: "3000"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: C:\Users\Jeff\Desktop\wizard\frontend
+        target: /app
+        bind:
+          create_host_path: true
+      - type: volume
+        target: /app/node_modules
+        volume: {}
+      - type: volume
+        target: /app/.next
+        volume: {}
+  mysql:
+    container_name: evangelism-mysql
+    environment:
+      MYSQL_DATABASE: evangelism_app
+      MYSQL_PASSWORD: evangelism_password
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_USER: evangelism_user
+    image: mysql:8.0
+    networks:
+      evangelism-network: null
+    ports:
+      - mode: ingress
+        target: 3306
+        published: "3306"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: mysql_data
+        target: /var/lib/mysql
+        volume: {}
+      - type: bind
+        source: C:\Users\Jeff\Desktop\wizard\bible
+        target: /docker-entrypoint-initdb.d
+        bind:
+          create_host_path: true
+networks:
+  evangelism-network:
+    name: wizard_evangelism-network
+    driver: bridge
+volumes:
+  mysql_data:
+    name: wizard_mysql_data

@@ -193,6 +193,204 @@ router.post('/invite', authenticate, requireRole(['ADMIN']), [
 // Get all invitations
 router.get('/invitations', authenticate, requireRole(['ADMIN']), async (req, res) => {
   try {
+    const { page = 1, limit = 20, status } = req.query;
+
+    const where: any = {};
+    if (status === 'used') {
+      where.used = true;
+    } else if (status === 'pending') {
+      where.used = false;
+      where.expiresAt = { gt: new Date() };
+    } else if (status === 'expired') {
+      where.used = false;
+      where.expiresAt = { lt: new Date() };
+    }
+
+    const invitations = await prisma.userInvitation.findMany({
+      where,
+      skip: (Number(page) - 1) * Number(limit),
+      take: Number(limit),
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const total = await prisma.userInvitation.count({ where });
+
+    res.json({
+      invitations,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        pages: Math.ceil(total / Number(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Get invitations error:', error);
+    res.status(500).json({ error: 'Failed to get invitations' });
+  }
+});
+
+// Resend invitation
+router.post('/invitations/:id/resend', authenticate, requireRole(['ADMIN']), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const invitation = await prisma.userInvitation.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!invitation) {
+      return res.status(404).json({ error: 'Invitation not found' });
+    }
+
+    if (invitation.used) {
+      return res.status(400).json({ error: 'Invitation already used' });
+    }
+
+    // Extend expiration date
+    const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    await prisma.userInvitation.update({
+      where: { id: parseInt(id) },
+      data: { expiresAt: newExpiresAt }
+    });
+
+    // Resend email
+    await sendInvitationEmail(invitation.email, invitation.name, invitation.role, invitation.token);
+
+    res.json({ message: 'Invitation resent successfully' });
+  } catch (error) {
+    console.error('Resend invitation error:', error);
+    res.status(500).json({ error: 'Failed to resend invitation' });
+  }
+});
+
+// Bulk invite users
+router.post('/invite-bulk', authenticate, requireRole(['ADMIN']), [
+  body('invitations').isArray().withMessage('Invitations array is required'),
+  body('invitations.*.email').isEmail().withMessage('Valid email is required'),
+  body('invitations.*.name').notEmpty().withMessage('Name is required'),
+  body('invitations.*.role').isIn(['DISCIPLE_MAKER', 'CHURCH_FINDER']).withMessage('Invalid role')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { invitations } = req.body;
+    const results = [];
+
+    for (const invitation of invitations) {
+      try {
+        // Check if user already exists
+        const existingUser = await prisma.user.findUnique({
+          where: { email: invitation.email }
+        });
+
+        if (existingUser) {
+          results.push({
+            email: invitation.email,
+            status: 'error',
+            message: 'User already exists'
+          });
+          continue;
+        }
+
+        // Check if invitation already exists and is not expired
+        const existingInvitation = await prisma.userInvitation.findFirst({
+          where: {
+            email: invitation.email,
+            used: false,
+            expiresAt: { gt: new Date() }
+          }
+        });
+
+        if (existingInvitation) {
+          results.push({
+            email: invitation.email,
+            status: 'error',
+            message: 'Invitation already sent'
+          });
+          continue;
+        }
+
+        // Generate invitation token
+        const token = uuidv4();
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+        const newInvitation = await prisma.userInvitation.create({
+          data: {
+            email: invitation.email,
+            name: invitation.name,
+            role: invitation.role,
+            token,
+            expiresAt
+          }
+        });
+
+        // Send invitation email
+        await sendInvitationEmail(invitation.email, invitation.name, invitation.role, token);
+
+        results.push({
+          email: invitation.email,
+          status: 'success',
+          message: 'Invitation sent successfully'
+        });
+      } catch (error) {
+        results.push({
+          email: invitation.email,
+          status: 'error',
+          message: 'Failed to send invitation'
+        });
+      }
+    }
+
+    res.json({ results });
+  } catch (error) {
+    console.error('Bulk invite error:', error);
+    res.status(500).json({ error: 'Failed to send bulk invitations' });
+  }
+});
+
+// Get system health
+router.get('/health', authenticate, requireRole(['ADMIN']), async (req, res) => {
+  try {
+    // Check database connection
+    await prisma.$queryRaw`SELECT 1`;
+
+    // Check email service
+    const emailStatus = process.env.EMAIL_HOST ? 'configured' : 'not_configured';
+
+    // Check Zoom integration
+    const zoomStatus = (process.env.ZOOM_API_KEY && process.env.ZOOM_API_SECRET) ? 'configured' : 'not_configured';
+
+    // Check OpenAI integration
+    const openaiStatus = process.env.OPENAI_API_KEY ? 'configured' : 'not_configured';
+
+    res.json({
+      status: 'healthy',
+      services: {
+        database: 'connected',
+        email: emailStatus,
+        zoom: zoomStatus,
+        openai: openaiStatus
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(500).json({
+      status: 'unhealthy',
+      error: 'Health check failed',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Get all invitations
+router.get('/invitations', authenticate, requireRole(['ADMIN']), async (req, res) => {
+  try {
     const { page = 1, limit = 10, used } = req.query;
 
     const where: any = {};
