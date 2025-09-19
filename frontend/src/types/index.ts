@@ -213,6 +213,9 @@ export interface BibleReference {
 }
 
 export interface BibleVerse {
+  book: number;
+  chapter: number;
+  verse: number;
   reference: string;
   text: string;
   commentary: string;

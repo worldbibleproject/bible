@@ -16,6 +16,7 @@ import {
   ArrowRightIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { BibleReference, BibleVerse } from '@/types';
 
 interface WizardFormData {
   feeling: string;
@@ -26,20 +27,10 @@ interface WizardFormData {
   preferred_style: string;
 }
 
-interface WizardData {
-  id: number;
-  userId: number;
-  userInput?: any;
-  referencesJson?: string;
-  prayerText?: string;
-  versesJson?: string;
-  createdAt: string;
-}
-
 interface WizardResults {
-  references: any[];
+  references: BibleReference[];
   prayer: string;
-  verses: any[];
+  verses: BibleVerse[];
 }
 
 export default function WizardPage() {

@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
+
 interface WizardFormData {
   feeling: string;
   barrier: string;
